@@ -1,69 +1,453 @@
-# Ficheiro: src/routes/analysis.py
+// Ficheiro: src/static/js/analysis.js
 
-import logging
-from flask import Blueprint, request, jsonify
-import traceback
+/**
+ * Gerenciador de Análise para ARQV30 Enhanced
+ * Controla o processo de análise psicológica e exibição dos resultados
+ */
+class AnalysisManager {
+    constructor() {
+        this.isAnalyzing = false;
+        this.currentStep = 0;
+        this.totalSteps = 6;
+        this.progressInterval = null;
+        this.init();
+    }
 
-# Importa o motor de análise principal e o gestor do banco de dados
-from services.enhanced_analysis_engine import enhanced_analysis_engine
-from database import db_manager
+    init() {
+        console.log("Analysis Manager inicializado.");
+        this.setupEventListeners();
+    }
 
-logger = logging.getLogger(__name__)
+    setupEventListeners() {
+        // Event listener para o formulário de análise
+        const form = document.getElementById('analysisForm');
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.startAnalysis();
+            });
+        }
+    }
 
-# Cria um Blueprint para organizar as rotas relacionadas com a análise.
-analysis_bp = Blueprint('analysis', __name__)
+    /**
+     * Inicia o processo de análise psicológica
+     */
+    async startAnalysis() {
+        if (this.isAnalyzing) {
+            window.app.showAlert('Uma análise já está em andamento.', 'info');
+            return;
+        }
 
-@analysis_bp.route('/analyze', methods=['POST'])
-def analyze_market():
-    """
-    Endpoint principal para receber os dados do formulário, iniciar o processo
-    de análise e retornar o relatório completo em formato JSON.
-    """
-    logger.info("🚀 Recebido novo pedido de análise no endpoint /api/analyze.")
-    
-    try:
-        # --- Passo 1: Obter e Validar os Dados de Entrada ---
-        data = request.get_json()
-        if not data:
-            logger.warning("⚠️ Pedido recebido sem dados JSON.")
-            return jsonify({'error': 'Corpo do pedido vazio. Envie os dados em formato JSON.'}), 400
+        // Valida dados do formulário
+        const formData = this.collectFormData();
+        if (!this.validateFormData(formData)) {
+            return;
+        }
 
-        if not data.get('segmento'):
-            logger.warning("⚠️ Pedido de análise sem o campo obrigatório 'segmento'.")
-            return jsonify({'error': 'O campo "segmento" é obrigatório.'}), 400
+        this.isAnalyzing = true;
+        this.currentStep = 0;
 
-        logger.info(f"Dados recebidos para análise: {data}")
-
-        # --- Passo 2: Chamar o Motor de Análise ---
-        analysis_result = enhanced_analysis_engine.generate_comprehensive_analysis(data)
-
-        if not analysis_result or analysis_result.get("error"):
-            logger.error(f"❌ O motor de análise retornou um erro: {analysis_result.get('error')}")
-            return jsonify(analysis_result), 500
-
-        # --- Passo 3: Preparar Dados e Guardar no Banco de Dados ---
-        db_data_to_save = data.copy()
-        db_data_to_save['comprehensive_analysis'] = analysis_result
+        // Configura interface para modo de análise
+        this.setupAnalysisUI();
         
-        # --- CORREÇÃO AQUI ---
-        # Converte campos de texto vazios para None para evitar erros de tipo numérico no banco de dados.
-        if db_data_to_save.get('preco') == '':
-            db_data_to_save['preco'] = None
-        
-        created_record = db_manager.create_analysis(db_data_to_save)
-        
-        if created_record and created_record.get('id'):
-            analysis_result['database_id'] = created_record['id']
-            logger.info(f"✅ Análise guardada com sucesso no banco de dados com ID: {created_record['id']}")
-        else:
-            logger.warning("⚠️ A análise foi gerada, mas falhou ao ser guardada no banco de dados.")
-            analysis_result['database_status'] = "failed_to_save"
+        try {
+            // Inicia animação de progresso
+            this.startProgressAnimation();
+            
+            // Chama API de análise
+            const result = await this.performAnalysis(formData);
+            
+            // Processa resultado
+            this.handleAnalysisResult(result);
+            
+        } catch (error) {
+            console.error('Erro na análise:', error);
+            this.handleAnalysisError(error);
+        } finally {
+            this.isAnalyzing = false;
+            this.stopProgressAnimation();
+        }
+    }
 
-        # --- Passo 4: Retornar a Resposta de Sucesso ---
-        logger.info("✅ Análise concluída e pronta para ser enviada ao cliente.")
-        return jsonify(analysis_result), 200
+    /**
+     * Coleta dados do formulário
+     */
+    collectFormData() {
+        const form = document.getElementById('analysisForm');
+        const formData = new FormData(form);
+        
+        const data = {};
+        for (let [key, value] of formData.entries()) {
+            data[key] = value.trim();
+        }
+        
+        // Converte preço para número se fornecido
+        if (data.preco && data.preco !== '') {
+            data.preco = parseFloat(data.preco);
+        }
+        
+        return data;
+    }
 
-    except Exception as e:
-        logger.critical(f"❌ Erro inesperado no endpoint de análise: {e}")
-        logger.critical(traceback.format_exc())
-        return jsonify({'error': 'Ocorreu um erro inesperado no servidor.'}), 500
+    /**
+     * Valida dados do formulário
+     */
+    validateFormData(data) {
+        if (!data.segmento || data.segmento.length < 3) {
+            window.app.showAlert('Por favor, informe o segmento de mercado (mínimo 3 caracteres).', 'error');
+            document.getElementById('segmento').focus();
+            return false;
+        }
+
+        if (data.preco && (isNaN(data.preco) || data.preco < 0)) {
+            window.app.showAlert('Por favor, informe um preço válido.', 'error');
+            document.getElementById('preco').focus();
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Configura interface para modo de análise
+     */
+    setupAnalysisUI() {
+        // Esconde formulário e mostra área de progresso
+        const formSection = document.querySelector('.analysis-section');
+        const progressSection = document.getElementById('progressArea');
+        const resultsSection = document.getElementById('resultsArea');
+        
+        if (formSection) formSection.style.display = 'none';
+        if (progressSection) progressSection.style.display = 'block';
+        if (resultsSection) resultsSection.style.display = 'none';
+        
+        // Configura botão de análise
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        if (analyzeBtn) {
+            window.app.setButtonLoading(analyzeBtn, true);
+        }
+        
+        // Scroll para área de progresso
+        if (progressSection) {
+            progressSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+
+    /**
+     * Inicia animação de progresso
+     */
+    startProgressAnimation() {
+        const progressFill = document.getElementById('progressBarFill');
+        const statusText = document.getElementById('progressStatusText');
+        
+        const steps = [
+            { progress: 15, text: '🧠 Analisando perfil psicológico do avatar...' },
+            { progress: 30, text: '🔍 Realizando pesquisa web contextual...' },
+            { progress: 45, text: '⚡ Criando drivers mentais customizados...' },
+            { progress: 60, text: '🛡️ Mapeando objeções e resistências...' },
+            { progress: 80, text: '👁️ Gerando arsenal de provas visuais...' },
+            { progress: 95, text: '📊 Finalizando relatório integrado...' }
+        ];
+        
+        let currentStepIndex = 0;
+        
+        this.progressInterval = setInterval(() => {
+            if (currentStepIndex < steps.length) {
+                const step = steps[currentStepIndex];
+                
+                if (progressFill) {
+                    progressFill.style.width = `${step.progress}%`;
+                }
+                
+                if (statusText) {
+                    statusText.textContent = step.text;
+                }
+                
+                currentStepIndex++;
+            }
+        }, 3000); // Muda a cada 3 segundos
+    }
+
+    /**
+     * Para animação de progresso
+     */
+    stopProgressAnimation() {
+        if (this.progressInterval) {
+            clearInterval(this.progressInterval);
+            this.progressInterval = null;
+        }
+        
+        // Completa barra de progresso
+        const progressFill = document.getElementById('progressBarFill');
+        const statusText = document.getElementById('progressStatusText');
+        
+        if (progressFill) {
+            progressFill.style.width = '100%';
+        }
+        
+        if (statusText) {
+            statusText.textContent = '✅ Análise concluída com sucesso!';
+        }
+    }
+
+    /**
+     * Executa a análise via API
+     */
+    async performAnalysis(formData) {
+        const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
+        }
+
+        return await response.json();
+    }
+
+    /**
+     * Processa resultado da análise
+     */
+    handleAnalysisResult(result) {
+        console.log('Resultado da análise recebido:', result);
+        
+        // Aguarda um pouco para mostrar progresso completo
+        setTimeout(() => {
+            // Esconde área de progresso
+            const progressSection = document.getElementById('progressArea');
+            if (progressSection) {
+                progressSection.style.display = 'none';
+            }
+            
+            // Mostra área de resultados
+            const resultsSection = document.getElementById('resultsArea');
+            if (resultsSection) {
+                resultsSection.style.display = 'block';
+                resultsSection.scrollIntoView({ behavior: 'smooth' });
+            }
+            
+            // Renderiza dashboard com os resultados
+            if (window.dashboardManager) {
+                window.dashboardManager.renderDashboard(result);
+            } else {
+                console.error('Dashboard Manager não encontrado');
+                this.renderFallbackResults(result);
+            }
+            
+            // Mostra botão de PDF se disponível
+            const pdfBtn = document.getElementById('downloadPdfBtn');
+            if (pdfBtn) {
+                pdfBtn.style.display = 'inline-flex';
+            }
+            
+            // Notifica sucesso
+            window.app.showAlert('Análise psicológica concluída com sucesso!', 'success');
+            
+        }, 1500);
+    }
+
+    /**
+     * Renderiza resultados em formato simples (fallback)
+     */
+    renderFallbackResults(result) {
+        const container = document.getElementById('resultsContent');
+        if (!container) return;
+        
+        let html = '<div class="fallback-results">';
+        
+        // Resumo Executivo
+        if (result.resumo_executivo) {
+            html += `
+                <div class="result-section">
+                    <div class="section-header">
+                        <i class="fas fa-chart-line"></i>
+                        Resumo Executivo
+                    </div>
+                    <div class="section-content">
+                        <p>${result.resumo_executivo}</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Avatar Psicológico
+        if (result.avatar_psicologico_profundo || result.avatar_psicologico) {
+            const avatar = result.avatar_psicologico_profundo || result.avatar_psicologico;
+            html += `
+                <div class="result-section">
+                    <div class="section-header">
+                        <i class="fas fa-user-circle"></i>
+                        Avatar Psicológico
+                    </div>
+                    <div class="section-content">
+                        ${this.formatAvatarContent(avatar)}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Drivers Mentais
+        if (result.drivers_mentais_customizados || result.drivers_mentais) {
+            const drivers = result.drivers_mentais_customizados || result.drivers_mentais;
+            html += `
+                <div class="result-section">
+                    <div class="section-header">
+                        <i class="fas fa-cogs"></i>
+                        Drivers Mentais
+                    </div>
+                    <div class="section-content">
+                        ${this.formatDriversContent(drivers)}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Análise de Mercado
+        if (result.analise_mercado) {
+            html += `
+                <div class="result-section">
+                    <div class="section-header">
+                        <i class="fas fa-chart-pie"></i>
+                        Análise de Mercado
+                    </div>
+                    <div class="section-content">
+                        ${this.formatMarketContent(result.analise_mercado)}
+                    </div>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    formatAvatarContent(avatar) {
+        let content = '';
+        
+        if (avatar.dores_viscerais || avatar.dores_secretas) {
+            const dores = avatar.dores_viscerais || avatar.dores_secretas;
+            content += `
+                <h4>Dores Viscerais</h4>
+                <ul>${dores.map(dor => `<li>${dor}</li>`).join('')}</ul>
+            `;
+        }
+        
+        if (avatar.desejos_secretos || avatar.desejos_ardentes) {
+            const desejos = avatar.desejos_secretos || avatar.desejos_ardentes;
+            content += `
+                <h4>Desejos Secretos</h4>
+                <ul>${desejos.map(desejo => `<li>${desejo}</li>`).join('')}</ul>
+            `;
+        }
+        
+        if (avatar.medos_paralisantes) {
+            content += `
+                <h4>Medos Paralisantes</h4>
+                <ul>${avatar.medos_paralisantes.map(medo => `<li>${medo}</li>`).join('')}</ul>
+            `;
+        }
+        
+        return content;
+    }
+
+    formatDriversContent(drivers) {
+        if (!Array.isArray(drivers)) return '<p>Drivers não disponíveis.</p>';
+        
+        return drivers.map(driver => `
+            <div class="driver-item">
+                <h4>${driver.nome}</h4>
+                <p><strong>Gatilho:</strong> ${driver.gatilho_central}</p>
+                ${driver.roteiro_ativacao ? `<p><strong>Ativação:</strong> ${driver.roteiro_ativacao}</p>` : ''}
+            </div>
+        `).join('');
+    }
+
+    formatMarketContent(mercado) {
+        let content = '';
+        
+        if (mercado.tamanho_mercado) {
+            content += `<p><strong>Tamanho do Mercado:</strong> ${mercado.tamanho_mercado}</p>`;
+        }
+        
+        if (mercado.principais_tendencias) {
+            content += `
+                <h4>Principais Tendências</h4>
+                <ul>${mercado.principais_tendencias.map(t => `<li>${t}</li>`).join('')}</ul>
+            `;
+        }
+        
+        if (mercado.oportunidades) {
+            content += `
+                <h4>Oportunidades</h4>
+                <ul>${mercado.oportunidades.map(o => `<li>${o}</li>`).join('')}</ul>
+            `;
+        }
+        
+        return content;
+    }
+
+    /**
+     * Trata erros na análise
+     */
+    handleAnalysisError(error) {
+        console.error('Erro na análise:', error);
+        
+        // Esconde área de progresso
+        const progressSection = document.getElementById('progressArea');
+        if (progressSection) {
+            progressSection.style.display = 'none';
+        }
+        
+        // Mostra formulário novamente
+        const formSection = document.querySelector('.analysis-section');
+        if (formSection) {
+            formSection.style.display = 'block';
+        }
+        
+        // Restaura botão
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        if (analyzeBtn) {
+            window.app.setButtonLoading(analyzeBtn, false);
+        }
+        
+        // Mostra erro
+        const errorMessage = error.message || 'Erro desconhecido na análise';
+        window.app.showAlert(`Erro na análise: ${errorMessage}`, 'error');
+    }
+
+    /**
+     * Reseta o estado da análise
+     */
+    resetAnalysis() {
+        this.isAnalyzing = false;
+        this.currentStep = 0;
+        this.stopProgressAnimation();
+        
+        // Mostra formulário
+        const formSection = document.querySelector('.analysis-section');
+        if (formSection) {
+            formSection.style.display = 'block';
+        }
+        
+        // Esconde outras seções
+        const progressSection = document.getElementById('progressArea');
+        const resultsSection = document.getElementById('resultsArea');
+        
+        if (progressSection) progressSection.style.display = 'none';
+        if (resultsSection) resultsSection.style.display = 'none';
+        
+        // Restaura botão
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        if (analyzeBtn) {
+            window.app.setButtonLoading(analyzeBtn, false);
+        }
+    }
+}
+
+// Instância global do gerenciador de análise
+window.analysisManager = new AnalysisManager();

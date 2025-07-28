@@ -7,6 +7,7 @@
     
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     
     <link rel="preconnect" href="[https://fonts.googleapis.com](https://fonts.googleapis.com)">
     <link rel="preconnect" href="[https://fonts.gstatic.com](https://fonts.gstatic.com)" crossorigin>
@@ -74,13 +75,16 @@
 
                         <div class="form-group">
                             <h3 class="section-title"><i class="fas fa-paperclip"></i>Anexos (Opcional)</h3>
-                             <div class="upload-area" id="uploadArea">
+                             <div class="upload-area" id="uploadArea" style="display: none;">
                                 <div class="upload-content">
                                     <i class="fas fa-cloud-upload-alt"></i>
                                     <h4>Arraste ficheiros para aqui ou clique para selecionar</h4>
                                     <p>PDF, DOCX, TXT. Use para fornecer contexto adicional.</p>
                                     <input type="file" id="fileInput" multiple accept=".pdf,.docx,.txt">
                                 </div>
+                            </div>
+                            <div class="upload-info">
+                                <p><i class="fas fa-info-circle"></i> Funcionalidade de upload será ativada em breve. A análise funciona perfeitamente sem anexos.</p>
                             </div>
                             <div class="uploaded-files" id="uploadedFilesContainer"></div>
                         </div>
@@ -145,5 +149,6 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/upload.js') }}"></script>
     <script src="{{ url_for('static', filename='js/analysis.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>
