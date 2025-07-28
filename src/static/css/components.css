@@ -1,0 +1,223 @@
+/* Ficheiro: src/static/css/components.css */
+
+/* --- Estilos para os Componentes da Área de Resultados --- */
+
+/* Contenedor de cada secção de resultado (Avatar, Análise de Mercado, etc.) */
+.result-section {
+    margin-bottom: var(--spacing-8);
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--glass-border);
+    overflow: hidden;
+    transition: all var(--transition-normal);
+}
+
+.result-section:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-outset);
+}
+
+/* Cabeçalho de cada secção de resultado */
+.section-header {
+    background: var(--gradient-primary);
+    padding: 1rem var(--spacing-6);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: white;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+}
+
+/* Conteúdo dentro de cada secção */
+.section-content {
+    padding: var(--spacing-6);
+}
+
+.section-content p {
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+}
+
+.section-content h4 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--accent-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.section-content ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.section-content ul li {
+    position: relative;
+    padding-left: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+
+.section-content ul li::before {
+    content: '▶';
+    position: absolute;
+    left: 0;
+    color: var(--accent-primary);
+    font-size: 0.8rem;
+    top: 5px;
+}
+
+/* --- Componentes Específicos --- */
+
+/* Cartões do Avatar */
+.avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-6);
+}
+
+.avatar-card {
+    background: var(--glass-bg);
+    padding: var(--spacing-6);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-inset);
+}
+
+.avatar-card strong {
+    display: block;
+    color: var(--accent-primary);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+/* Cartão da Proposta de Valor Única (PVU) */
+.pvu-card {
+    background: var(--bg-elevated);
+    border-left: 4px solid var(--accent-primary);
+    padding: var(--spacing-6);
+    margin-top: 1.5rem;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    box-shadow: var(--shadow-inset);
+}
+
+.pvu-card strong {
+    font-weight: 600;
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+/* Cartões da Concorrência */
+.competitor-card {
+    background: var(--glass-bg);
+    padding: var(--spacing-6);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-4);
+    box-shadow: var(--shadow-inset);
+}
+
+.competitor-card h5 {
+    font-size: 1.2rem;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+/* Fases do Plano de Ação */
+.plan-phase {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.plan-phase:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.plan-phase h5 {
+    font-size: 1.1rem;
+    color: var(--accent-primary);
+    text-transform: capitalize;
+    margin-bottom: 0.75rem;
+}
+
+/* --- Componentes de Notificação --- */
+.alert-popup {
+    position: fixed;
+    top: var(--spacing-6);
+    right: var(--spacing-6);
+    max-width: 400px;
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-floating);
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    animation: slideInRight 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.alert-popup.alert-success {
+    background: rgba(6, 255, 165, 0.2);
+    border: 1px solid rgba(6, 255, 165, 0.5);
+    color: #06ffa5;
+}
+
+.alert-popup.alert-error {
+    background: rgba(255, 107, 107, 0.2);
+    border: 1px solid rgba(255, 107, 107, 0.5);
+    color: #ff6b6b;
+}
+
+.alert-popup.alert-info {
+    background: rgba(0, 212, 255, 0.2);
+    border: 1px solid rgba(0, 212, 255, 0.5);
+    color: #00d4ff;
+}
+
+.alert-popup .close-btn {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 1.5rem;
+    cursor: pointer;
+    margin-left: auto;
+    padding: 0 0.5rem;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Mensagem de erro dentro da área de resultados */
+.error-message {
+    text-align: center;
+    padding: var(--spacing-8);
+}
+
+.error-message h4 {
+    color: #ff6b6b;
+    margin-bottom: 1rem;
+}
+
+.error-message pre {
+    background: var(--bg-primary);
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    text-align: left;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    max-height: 200px;
+    overflow-y: auto;
+}
